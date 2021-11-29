@@ -1,0 +1,50 @@
+; NEWTON FRACTAL ON CPC 464
+; 
+
+; MODULES
+; - INIT-END SCREEN MODE
+; - LOOK UP TABLE
+; - PIXEL (X,Y) TO BYTE + XOR MASK 
+; - COMPLEX ARITMETIC
+; - ITERATION
+
+; FIRMWARE LIBRARY
+; #BC14 -> SCR CLEAR (AF BC DE HL CORRUPT)
+; #BC26 -> SCR NEXT LINE: HL=HL+1LINE (AF CORRUPT)
+; #BC11 -> SCR GET MODE: A=OLD MODE
+; #BC0E -> SCR SET MODE: MODE=A (AF BC DE HL CORRUPT)
+; #BC38 -> SCR SET BORDER: BORDER=BC (AF,BC,DE,HL CORRUPT)
+; #BC3B -> SCR GET BORDER: BC=BORDER (AF,DE,HL CORRUPT)
+; #BC35 -> SCR GET INK: BC=INK(A) (AF,DE,HL CORRUPT)
+; #BC32 -> SCR SET INK; INK()
+Action Sets the colours of a PEN - if the two values supplied are different then the colours will alternate (flash)
+Entry contains the PEN number, B contains the first colour, and C holds the second colour
+Exit AF, BC, DE and HL are corrupt, and all others are preserved
+; WAIT KEY
+; 
+
+SCRINIT:
+; INITS SCREEN TO MODE 1
+; BACKUPS OLD STATES IN STACK
+; A=0 INIT SCREEN
+; A=1 RESTORE SCREEN
+; AF,BC CORRUPT
+
+LD B,A
+LD A,1
+CP B
+JR Z,SCREND
+CALL #BC11
+PUSH AF             ; STORE MODE
+CALL #BC3B
+PUSH BC             ; STORE BORDER COLOR
+
+
+RET
+SCREND:             ; END ROUTINE
+
+POP BC
+CALL #BC38          ; RESTORE BORDER
+POP AF
+CALL BC0E           ; RESTORE OLDMODE
+RET 
