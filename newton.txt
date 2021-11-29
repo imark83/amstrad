@@ -1,6 +1,16 @@
 ; NEWTON FRACTAL ON CPC 464
 ; 
 
+; INK COLOURS
+;  0 BLACK
+;  D WHITE
+;  1 BLUE
+;  2 BRIGHT BLUE
+;  3 RED
+;  6 BRIGHT RED
+;  9 GREEN
+; 13 BRIGHT GREEN
+
 ; MODULES
 ; - INIT-END SCREEN MODE
 ; - LOOK UP TABLE
@@ -9,6 +19,7 @@
 ; - ITERATION
 
 ; FIRMWARE LIBRARY
+; #BBFF -> SCR INITIALISE (AF BC DE HL CORRUPT)
 ; #BC14 -> SCR CLEAR (AF BC DE HL CORRUPT)
 ; #BC26 -> SCR NEXT LINE: HL=HL+1LINE (AF CORRUPT)
 ; #BC11 -> SCR GET MODE: A=OLD MODE
@@ -16,12 +27,11 @@
 ; #BC38 -> SCR SET BORDER: BORDER=BC (AF,BC,DE,HL CORRUPT)
 ; #BC3B -> SCR GET BORDER: BC=BORDER (AF,DE,HL CORRUPT)
 ; #BC35 -> SCR GET INK: BC=INK(A) (AF,DE,HL CORRUPT)
-; #BC32 -> SCR SET INK; INK()
-Action Sets the colours of a PEN - if the two values supplied are different then the colours will alternate (flash)
-Entry contains the PEN number, B contains the first colour, and C holds the second colour
-Exit AF, BC, DE and HL are corrupt, and all others are preserved
+; #BC32 -> SCR SET INK; INK(A) = BC
+;
 ; WAIT KEY
-; 
+;
+; #BD58 -> REAL ADDITION; (HL)+=(DE) (AF BC DE IX IY CORRUPT)
 
 SCRINIT:
 ; INITS SCREEN TO MODE 1
@@ -38,13 +48,96 @@ CALL #BC11
 PUSH AF             ; STORE MODE
 CALL #BC3B
 PUSH BC             ; STORE BORDER COLOR
+LD A,0
+CALL #BC35
+PUSH BC             ; STORE INK 0
+LD A,1
+CALL #BC35
+PUSH BC             ; STORE INK 1
+LD A,2
+CALL #BC35
+PUSH BC             ; STORE INK 2
+LD A,3
+CALL #BC35
+PUSH BC             ; STORE INK 3
+
+LD A,1
+CALL #BC0E          ; SET MODE 1
+LD BC,#0
+CALL #BC38          ; SET BORDER BLACK
+LD A,0
+LD BC,#0
+CALL #BC32          ; SET INK(0)=BLACK
+LD A,1
+LD BC,#0202
+CALL #BC32          ; SET INK(1)=BRIGHT BLUE
+LD A,2
+LD BC,#1313
+CALL #BC32          ; SET INK(2)=BRIGHT GREEN
+LD A,3
+LD BC,#0606
+CALL #BC32          ; SET INK(3)=BRIGHT RED
 
 
 RET
 SCREND:             ; END ROUTINE
-
+POP BC
+LD A,3
+CALL #BC32          ; RESTORE INK 3
+POP BC
+LD A,2
+CALL #BC32          ; RESTORE INK 2
+POP BC
+LD A,1
+CALL #BC32          ; RESTORE INK 1
+POP BC
+LD A,0
+CALL #BC32          ; RESTORE INK 0
 POP BC
 CALL #BC38          ; RESTORE BORDER
 POP AF
 CALL BC0E           ; RESTORE OLDMODE
 RET 
+
+
+
+
+
+
+
+MKTAB:
+; MAKE LOOK UP TABLE
+; STORAGE
+SCRTAB: DEFS 2*200
+LD B,200            ; NUMBER OF LINES
+LD IX,SCRTAB        ; START OF THE TABLE
+LD HL,#C000
+LMT:                ; LOOP
+  LD (IX+0),L       ; WRITE TO THE TABLE
+  LD (IX+1),H
+
+  INC IX            ; NEXT 2 BYTES OF TABLE
+  INC IX
+  CALL #BC26        ; CALL NEXT LINE
+  DJNZ MLT1
+RET
+
+
+
+; COMPLEX ARITHMETIC
+; COMPLEX STORED AS 10 BYTES IN MEMORY
+; HL POINTS TO THE FIRST BYTE, REAL PART
+; AF BC DE IX IY CORRUPT
+CADD:
+; (HL) = (HL) + (DE)
+PUSH DE             ; STORE DE
+CALL #BD58          ; ADD REAL PART
+POP DE
+LD BC,HL            ; BACK UP HL
+LD HL,5
+ADD HL,DE            
+LD DE,HL            ; DE+=5
+LD HL,5
+ADD HL,BC           ; HL+=5
+CALL #BC58          ; ADD IMAG PART
+RET
