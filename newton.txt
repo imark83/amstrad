@@ -106,11 +106,13 @@ CADD:
 PUSH DE             ; STORE DE
 CALL #BD58          ; ADD REAL PART
 POP DE
-LD BC,HL            ; BACK UP HL
+LD B,H
+LD C,L            ; BACK UP HL
 LD HL,5
 ADD HL,DE            
-LD DE,HL            ; DE+=5
+LD D,H
+LD E,L            ; DE+=5
 LD HL,5
 ADD HL,BC           ; HL+=5
-CALL #BC58          ; ADD IMAG PART
+CALL #BD58          ; ADD IMAG PART
 RET
